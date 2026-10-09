@@ -109,6 +109,18 @@ function cloudStatus(title,detail=''){ $('cloudStatus').textContent=title; $('cl
 function cloudMessage(msg){ $('cloudMessage').textContent=msg; }
 function setCloudButtons(enabled){$('saveCloud').disabled=!enabled;$('restoreCloud').disabled=!enabled;}
 function currentAppData(){return {schemaVersion:1,app:'Assistente Nissola',exportedAt:new Date().toISOString(),ingredients,recipes,recipeEdits,selected,price:$('price').value,extras:$('extras').value,tax:$('tax').value,fixed:$('fixed').value,volume:$('volume').value};}
+function applyBackupData(d){
+ if(!d||typeof d!=='object'||!Array.isArray(d.ingredients)||!d.recipes||typeof d.recipes!=='object')throw new Error('Arquivo de backup inválido ou incompatível.');
+ ingredients=initialIngredients.map(base=>({...base,...(d.ingredients.find(x=>x.id===base.id)||{})}));
+ d.ingredients.filter(x=>!initialIngredients.some(base=>base.id===x.id)).forEach(x=>ingredients.push(x));
+ Object.keys(recipes).forEach(name=>delete recipes[name]);
+ Object.entries(d.recipes).forEach(([name,recipe])=>{if(recipe&&typeof recipe==='object')recipes[name]={price:safe(recipe.price),extras:safe(recipe.extras),items:recipe.items&&typeof recipe.items==='object'?{...recipe.items}:{}};});
+ if(!Object.keys(recipes).length)throw new Error('O backup não contém sabores.');
+ recipeEdits=d.recipeEdits&&typeof d.recipeEdits==='object'?d.recipeEdits:{};
+ selected=recipes[d.selected]?d.selected:Object.keys(recipes)[0];
+ $('tax').value=d.tax??8;$('fixed').value=d.fixed??0;$('volume').value=d.volume??1000;
+ renderCatalog();refreshFlavorOptions();flavor.value=selected;renderRecipe();$('price').value=d.price??recipes[selected].price;$('extras').value=d.extras??recipes[selected].extras;calc();
+}
 function scheduleCloudSave(){if(!cloudSession||!activeWorkspaceId||!cloudReadyForAutosave)return;if(cloudAutoSaveTimer)clearTimeout(cloudAutoSaveTimer);cloudAutoSaveTimer=setTimeout(()=>{if(cloudSession&&activeWorkspaceId&&cloudReadyForAutosave)writeCloudBackup(true);},2500);}
 async function handleCloudSession(session){cloudSession=session;cloudUser=session?.user||null;cloudReadyForAutosave=false;activeWorkspaceId=null;activeWorkspaceName='';$('cloudSignOut').hidden=!cloudUser;$('cloudSignIn').disabled=!!cloudUser;$('cloudSignUp').disabled=!!cloudUser;$('cloudEmail').disabled=!!cloudUser;$('cloudPassword').disabled=!!cloudUser;$('workspacePanel').hidden=!cloudUser;setCloudButtons(false);
  if(!cloudUser){cloudStatus('Não conectado','Entre com o e-mail cadastrado no Supabase. Os dados locais permanecem neste aparelho.');return;}
@@ -131,4 +143,4 @@ supabaseClient.auth.getSession().then(({data})=>handleCloudSession(data.session)
 $('downloadBackup').addEventListener('click',()=>{const blob=new Blob([JSON.stringify(currentAppData(),null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='assistente-nissola-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);cloudMessage('Backup JSON baixado para este aparelho.');});
 $('importBackup').addEventListener('click',()=>$('backupFile').click());$('backupFile').addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{const d=JSON.parse(await f.text());if(!confirm('Importar este arquivo substituirá os dados atuais. Continuar?'))return;applyBackupData(d);cloudMessage('Backup importado localmente. Para sincronizar, toque em “Salvar dados na nuvem”.');}catch(err){cloudMessage('Não foi possível importar: '+err.message);}finally{e.target.value='';}});
 $('saveIndicator').textContent='● Salvo';
-</script></body></html></body></html>
+</script></body></html>
