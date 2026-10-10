@@ -133,8 +133,10 @@ body.menu-open #menuBackdrop{opacity:1;visibility:visible}body.menu-open #appDra
 <button type="button" class="suggestion" data-preset="bacon">Bacon</button>
 <button type="button" class="suggestion" data-preset="milho">Frango com milho</button>
 </div>
-<div class="builder-sectiontitle"><strong>Ingredientes e quantidades</strong><span id="builderCount">1 item</span></div>
-<div class="help">Digite quantidades em gramas (g), mililitros (ml) ou unidades (un). Aceita vírgula ou ponto decimal, como 0,5 g.</div>
+<div class="builder-sectiontitle"><strong>Ingredientes separados por vírgula</strong><span>ETAPA 1</span></div>
+<div class="field"><label for="builderIngredientsList">Quais ingredientes vão nesta pizza?</label><textarea id="builderIngredientsList" rows="3" placeholder="Ex.: massa, molho de tomate, muçarela, calabresa, cebola" style="width:100%;font:inherit;font-size:15px;padding:13px;border:1px solid #d9e1d7;border-radius:11px;background:#fff;resize:vertical"></textarea><div class="help">Separe os nomes por vírgulas. O assistente confere quais já estão na base e quais precisam ser cadastrados.</div><button type="button" class="secondary" id="builderAnalyzeIngredients" style="margin-top:9px">Identificar ingredientes</button></div>
+<div class="builder-sectiontitle"><strong>Itens reconhecidos e quantidades</strong><span id="builderCount">0 itens</span></div>
+<div class="help">Confira os insumos identificados e informe a quantidade usada. Itens novos serão cadastrados sem preço; nenhum peso é presumido.</div>
 <div id="builderRows"></div>
 <div class="btns"><button type="button" class="secondary" id="builderAddRow">+ Adicionar ingrediente</button><button type="button" class="primary" id="builderSaveFlavor">Reconhecer insumos e salvar sabor</button></div>
 <div id="builderMessage" class="help" role="status" aria-live="polite"></div>
@@ -338,7 +340,7 @@ function exportCSV(){const rows=[['Insumo','Conteúdo embalagem','Unidade','Pre�
 
 // Cadastro por sabor: a receita reutiliza insumos existentes e cria somente os novos.
 const builderRows=$('builderRows');
-let builderDraft=[{name:'',qty:'',unit:'g'}];
+let builderDraft=[];
 const builderPresets={
  calabresa:{name:'Pizza de calabresa',rows:[['Massa pronta (disco de 250 g)','1','un'],['Molho de tomate','100','g'],['Muçarela','120','g'],['Calabresa fatiada','80','g'],['Cebola','30','g'],['Orégano','0,5','g']]},
  mussarela:{name:'Pizza de mussarela',rows:[['Massa pronta (disco de 250 g)','1','un'],['Molho de tomate','100','g'],['Muçarela','180','g'],['Tomate','30','g'],['Orégano','0,5','g']]},
@@ -374,7 +376,7 @@ function builderRenderRows(){
   row.append(left,qtyWrap,remove);builderRows.append(row);updateStatus();
  });
 }
-function builderLoadPreset(key){const p=builderPresets[key];if(!p)return;$('builderFlavorName').value=p.name;builderDraft=p.rows.map(([name,qty,unit])=>({name,qty,unit}));builderRenderRows();$('builderMessage').textContent='Sugestão carregada. Confira as quantidades e altere o que precisar antes de salvar.'}
+function builderLoadPreset(key){const p=builderPresets[key];if(!p)return;$('builderFlavorName').value=p.name;$('builderIngredientsList').value=p.rows.map(([name])=>name).join(', ');builderDraft=p.rows.map(([name,qty,unit])=>({name,qty,unit}));builderRenderRows();$('builderMessage').textContent='Sugestão carregada. Confira as quantidades e altere o que precisar antes de salvar.'}
 function builderAddNewIngredient(name,unit){let baseId=slugId(name),id=baseId,n=2;while(ingredients.some(p=>p.id===id))id=baseId+'_'+n++;const kind=unit==='un'?'un':unit;ingredients.push({id,name:displayIngredientName(name),qty:unit==='un'?1:1000,unit,price:0,kind,category:guessIngredientCategory(name)});return ingredients[ingredients.length-1]}
 function builderSave(){
  const name=$('builderFlavorName').value.trim();
@@ -400,10 +402,10 @@ function builderSave(){
  refreshFlavorOptions();flavor.value=selected;$('recipeFlavor').value=selected;
  renderCatalog();renderRecipe();calc();renderPricingSummaries();saveAll(false);
  $('builderMessage').textContent='Sabor "'+selected+'" salvo. '+reused+' ingrediente(s) associado(s) à base e '+created.length+' novo(s) insumo(s) criado(s): '+(created.length?created.join(', '):'nenhum')+'. Os novos insumos estão com preço pendente; complete-os na seção Insumos.';
- builderDraft=[{name:'',qty:'',unit:'g'}];$('builderFlavorName').value='';builderRenderRows();
+ builderDraft=[];$('builderFlavorName').value='';$('builderIngredientsList').value='';builderRenderRows();
 }
 document.querySelectorAll('#cadastroSabor [data-preset]').forEach(b=>b.addEventListener('click',()=>builderLoadPreset(b.dataset.preset)));
-$('builderAddRow').addEventListener('click',()=>{builderDraft.push({name:'',qty:'',unit:'g'});builderRenderRows()});
+$('builderAddRow').addEventListener('click',()=>{if(!builderDraft.length)builderDraft=[{name:'',qty:'',unit:'g'}];else builderDraft.push({name:'',qty:'',unit:'g'});builderRenderRows()});$('builderAnalyzeIngredients').addEventListener('click',()=>{const raw=$('builderIngredientsList').value.trim();if(!raw){$('builderMessage').textContent='Digite os ingredientes separados por vírgulas.';return}const parts=raw.split(/[,;\n]+/).map(x=>displayIngredientName(x)).filter(x=>x.length>1),seen=new Set(),rows=[];parts.forEach(name=>{const match=builderMatch(name),key=match?'id:'+match.id:'name:'+normalizeIngredientText(name);if(seen.has(key))return;seen.add(key);rows.push({name,qty:'',unit:match?.unit||'g'})});if(!rows.length){$('builderMessage').textContent='Não encontrei nomes de ingredientes nessa lista.';return}builderDraft=rows;builderRenderRows();$('builderMessage').textContent=rows.length+' ingrediente(s) identificado(s). Confira os nomes e preencha as quantidades antes de salvar.'});
 $('builderSaveFlavor').addEventListener('click',builderSave);
 builderRenderRows();
 // Alterna entre cadastrar sabor e cadastrar qualquer insumo usando a mesma base compartilhada.
