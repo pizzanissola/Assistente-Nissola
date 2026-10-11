@@ -2,14 +2,14 @@
   "id": "./",
   "name": "BARU — Gestão para negócios de alimentação",
   "short_name": "BARU",
-  "description": "Gestão de custos, fichas técnicas e preços para negócios de alimentação.",
+  "description": "BARU — gestão de custos, fichas técnicas e preços para negócios de alimentação. Criado por Nissola.",
   "lang": "pt-BR",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#f4f2ec",
-  "theme_color": "#17251f",
+  "background_color": "#f8f5ec",
+  "theme_color": "#173f52",
   "icons": [
     {
       "src": "./icon.svg",
