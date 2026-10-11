@@ -212,6 +212,12 @@ body.menu-open #menuBackdrop{opacity:1;visibility:visible}body.menu-open #appDra
 </div>
 <div class="builder-sectiontitle"><strong>Ingredientes e quantidades</strong><span id="builderCount">1 item</span></div>
 <div class="help">Digite quantidades em gramas (g), mililitros (ml) ou unidades (un). Aceita vírgula ou ponto decimal, como 0,5 g.</div>
+<div class="field" style="margin:12px 0">
+<label for="builderIngredientsList" style="display:block;font-size:13px;font-weight:700;margin-bottom:6px">Lista rápida de ingredientes e pesos</label>
+<textarea id="builderIngredientsList" rows="3" placeholder="massa 250g, molho de tomate 100g, mussarela 120g, calabresa 80g" style="width:100%;resize:vertical;font:inherit;font-size:15px;padding:11px 12px;border:1px solid #d8dcd6;border-radius:11px;background:#fff;color:var(--ink)"></textarea>
+<div class="help">Separe os itens por vírgula. Depois confira e ajuste as quantidades abaixo antes de salvar. Ex.: massa 250g, molho de tomate 100g.</div>
+<button type="button" class="secondary" id="builderAnalyzeIngredients" style="width:100%;margin-top:8px">Identificar ingredientes e pesos</button>
+</div>
 <div id="builderRows"></div>
 <div class="btns"><button type="button" class="secondary" id="builderAddRow">+ Adicionar ingrediente</button><button type="button" class="primary" id="builderSaveFlavor">Reconhecer insumos e salvar sabor</button></div>
 <div id="builderMessage" class="help" role="status" aria-live="polite"></div>
@@ -495,6 +501,24 @@ function builderSave(){
  builderDraft=[{name:'',qty:'',unit:'g'}];$('builderFlavorName').value='';builderRenderRows();
 }
 document.querySelectorAll('#cadastroSabor [data-preset]').forEach(b=>b.addEventListener('click',()=>builderLoadPreset(b.dataset.preset)));
+function parseBuilderIngredientList(raw){
+ return raw.split(/,(?!\\d)|[;\\n]+/).map(text=>text.trim()).filter(Boolean).map(text=>{
+  const m=text.match(/^(.+?)\\s+(\\d+(?:[,.]\\d+)?)\\s*(kg|g|gr|gramas?|ml|l|un(?:idades?)?)\\s*$/i);
+  if(!m)return{name:displayIngredientName(text),qty:'',unit:builderMatch(text)?.unit||'g'};
+  let qty=Number(m[2].replace(',','.'));const rawUnit=m[3].toLowerCase();let unit;
+  if(rawUnit==='kg'){qty*=1000;unit='g'}else if(rawUnit==='l'){qty*=1000;unit='ml'}else if(['g','gr','grama','gramas'].includes(rawUnit))unit='g';else if(['ml','mililitro','mililitros'].includes(rawUnit))unit='ml';else unit='un';
+  return{name:displayIngredientName(m[1]),qty:String(qty),unit};
+ });
+}
+$('builderAnalyzeIngredients').addEventListener('click',()=>{
+ const raw=$('builderIngredientsList').value.trim();
+ if(!raw){$('builderMessage').textContent='Digite os ingredientes separados por vírgulas.';return}
+ const parts=parseBuilderIngredientList(raw),seen=new Set(),rows=[];
+ parts.forEach(item=>{if(item.name.length<2)return;const match=builderMatch(item.name),key=match?'id:'+match.id:'name:'+normalizeIngredientText(item.name);if(seen.has(key))return;seen.add(key);rows.push({name:item.name,qty:item.qty,unit:item.unit||match?.unit||'g'})});
+ if(!rows.length){$('builderMessage').textContent='Não encontrei nomes de ingredientes nessa lista.';return}
+ builderDraft=rows;builderRenderRows();const withQty=rows.filter(r=>r.qty!=='').length;
+ $('builderMessage').textContent=rows.length+' ingrediente(s) identificado(s); '+withQty+' quantidade(s) extraída(s). Confira os itens e complete os que ficaram sem quantidade.';
+});
 $('builderAddRow').addEventListener('click',()=>{builderDraft.push({name:'',qty:'',unit:'g'});builderRenderRows()});
 $('builderSaveFlavor').addEventListener('click',builderSave);
 builderRenderRows();
