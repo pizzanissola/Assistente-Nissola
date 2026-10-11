@@ -1,0 +1,21 @@
+{
+  "id": "./",
+  "name": "BARU — Gestão para negócios de alimentação",
+  "short_name": "BARU",
+  "description": "Gestão de custos, fichas técnicas e preços para negócios de alimentação.",
+  "lang": "pt-BR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f4f2ec",
+  "theme_color": "#17251f",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
